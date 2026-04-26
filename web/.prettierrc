@@ -1,0 +1,24 @@
+{
+	"semi": true,
+	"singleQuote": false,
+	"printWidth": 80,
+	"trailingComma": "es5",
+	"useTabs": true,
+	"tabWidth": 2,
+	"bracketSpacing": true,
+	"bracketSameLine": false,
+	"arrowParens": "always",
+	"endOfLine": "lf",
+	"plugins": ["prettier-plugin-tailwindcss"],
+	"tailwindStylesheet": "./app/globals.css",
+	"tailwindFunctions": ["cn", "cva", "clsx", "twMerge"],
+	"overrides": [
+		{
+			"files": ["*.json", "*.md", "*.yaml", "*.yml"],
+			"options": {
+				"useTabs": false,
+				"tabWidth": 2
+			}
+		}
+	]
+}
