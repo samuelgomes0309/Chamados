@@ -1,0 +1,151 @@
+// Inicializar o prisma: yarn prisma init
+// Para criar uma migrate nova = yarn prisma migrate dev // tem que gerar tambem yarn prisma generate
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Níveis de permissão: ADMIN tem acesso total, USER tem acesso limitado
+enum Role {
+  ADMIN
+  USER
+}
+
+// Enum para definir a prioridade de uma categoria de chamado
+enum Priority {
+  LOW // Baixa prioridade
+  MEDIUM // Média prioridade
+  HIGH // Alta prioridade
+}
+
+// Enum para representar o estado atual de um chamado
+enum Status {
+  OPEN // Chamado aberto, aguardando atendimento
+  IN_PROGRESS // Chamado em atendimento
+  CLOSED // Chamado encerrado
+}
+
+// Enum para representar o estado de ativo e inativo
+enum Active {
+  ACTIVE // Ativo
+  INACTIVE // Inativo
+}
+
+// Representa os usuários do sistema
+model User {
+  id       String @id @default(uuid())
+  name     String
+  email    String @unique
+  password String
+
+  sector_id String? // Identificar a qual setor o usuario faz parte
+  Sector    Sector? @relation(fields: [sector_id], references: [id])
+
+  role   Role    @default(USER) // Permissão padrão ao criar um usuário
+  isRoot Boolean @default(false) // Indica se o usuário é um usuário root
+
+  tickets         Ticket[] // Chamados abertos por este usuário
+  assignedTickets Ticket[] @relation("TicketAssigned") // Chamados atribuídos ao usuário
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Representa os setores/departamentos responsáveis pelos chamados
+model Sector {
+  id          String @id @default(uuid())
+  name        String
+  description String
+  status      Active @default(ACTIVE)
+
+  categories Category[] // Categorias pertencentes a este setor
+  tickets    Ticket[] // Chamados direcionados a este setor
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  users      User[]
+
+  @@unique([name])
+  @@map("sectors")
+}
+
+// Representa a categoria de um chamado dentro de um setor
+model Category {
+  id   String @id @default(uuid())
+  name String
+
+  priority Priority // Prioridade da categoria
+
+  status Active @default(ACTIVE)
+
+  sector_id String
+  Sector    Sector @relation(fields: [sector_id], references: [id]) // Setor ao qual pertence
+
+  tickets Ticket[] // Chamados classificados nesta categoria
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("categories")
+}
+
+// Representa um chamado (ticket) aberto por um usuário
+model Ticket {
+  id            String @id @default(uuid())
+  ticket_number Int    @default(autoincrement()) // Número sequencial de identificação do chamado
+  title         String
+  description   String
+
+  resolution String? // Texto de resolução do chamado
+
+  status Status @default(OPEN) // Todo chamado começa como aberto
+
+  user_id String
+  User    User   @relation(fields: [user_id], references: [id]) // Usuário que abriu o chamado
+
+  sector_id String
+  Sector    Sector @relation(fields: [sector_id], references: [id]) // Setor responsável
+
+  category_id String
+  Category    Category @relation(fields: [category_id], references: [id]) // Categoria do chamado
+
+  assigned_to  String? // ID ou nome do responsável pelo atendimento (opcional)
+  AssignedUser User?   @relation("TicketAssigned", fields: [assigned_to], references: [id])
+
+  started_at DateTime? // Data de início do atendimento(null se ainda não iniciado)
+  closed_at  DateTime? // Data de encerramento (null se ainda aberto)
+
+  ticketAttachments TicketAttachment[] // Arquivos anexados ao chamado
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("tickets")
+}
+
+// Representa os arquivos anexados a um chamado (imagens, PDFs, documentos, etc.)
+model TicketAttachment {
+  id        String @id @default(uuid())
+  url       String // URL de armazenamento do arquivo
+  name      String // Nome original do arquivo (ex: "relatorio.pdf")
+  mime_type String // Tipo MIME (ex: "image/png", "application/pdf")
+
+  size Int // Tamanho em bytes
+
+  public_id String // ID público do arquivo no Cloudinary
+
+  ticket_id String
+  Ticket    Ticket @relation(fields: [ticket_id], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("ticket_attachments")
+}
